@@ -1,5 +1,5 @@
 import streamlit as st
-import PyPDF2
+import fitz  # This is the PyMuPDF library
 import edge_tts
 import asyncio
 import os
@@ -11,7 +11,6 @@ st.set_page_config(
 )
 
 # --- SANSKRIT PRONUNCIATION DICTIONARY ---
-# This looks for special characters and replaces them with English phonetics before the AI reads it.
 def apply_pronunciation_rules(text):
     rules = {
         "ā": "aa",
@@ -34,19 +33,14 @@ def apply_pronunciation_rules(text):
         "Dr": "Doctor"
     }
     for key, value in rules.items():
-        # Replace lowercase
         text = text.replace(key, value)
-        # Replace uppercase
         text = text.replace(key.upper(), value.capitalize())
     return text
 
 # --- AUDIO GENERATION ENGINE ---
-# This runs the free edge-tts engine and saves the audio file
 async def generate_audio(text, voice="en-IN-NeerjaNeural"):
     processed_text = apply_pronunciation_rules(text)
-    # Create the audio generator
     communicate = edge_tts.Communicate(processed_text, voice)
-    # Save it to a temporary file
     await communicate.save("output.mp3")
 
 # --- SESSION STATE (MEMORY) ---
@@ -67,16 +61,21 @@ uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
 if uploaded_file is not None:
     if st.button("Process Book"):
-        with st.spinner("Extracting text... This might take a moment for large books."):
-            pdf_reader = PyPDF2.PdfReader(uploaded_file)
-            total_pages = len(pdf_reader.pages)
+        with st.spinner("Extracting text with high-fidelity engine..."):
+            # 1. Read the file into memory
+            pdf_bytes = uploaded_file.read()
             
+            # 2. Open it with our new PyMuPDF engine
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            total_pages = len(doc)
+            
+            # 3. Extract text
             extracted_pages = []
             for page_num in range(total_pages):
-                page = pdf_reader.pages[page_num]
-                text = page.extract_text()
+                page = doc.load_page(page_num)
+                text = page.get_text()
                 
-                if text:
+                if text.strip():
                     extracted_pages.append(text)
                 else:
                     extracted_pages.append("[No text found on this page. It might be an image or scan.]")
@@ -98,7 +97,6 @@ if st.session_state.pdf_pages:
     col_voice, col_play, col_empty = st.columns([2, 2, 6])
     
     with col_voice:
-        # A dropdown to select voice accents and genders
         voice_choice = st.selectbox("Select Voice:", [
             "en-IN-NeerjaNeural (Female, India)", 
             "en-IN-PrabhatNeural (Male, India)", 
@@ -107,23 +105,18 @@ if st.session_state.pdf_pages:
             "en-GB-SoniaNeural (Female, UK)",
             "en-GB-RyanNeural (Male, UK)"
         ])
-        # We only need the ID part (e.g., "en-IN-NeerjaNeural") for the code
         voice_id = voice_choice.split(" ")[0]
 
     with col_play:
-        # Add some space to align the button with the dropdown
         st.write("") 
         st.write("")
         if st.button("Play Current Page"):
             with st.spinner("Generating natural speech..."):
-                # Run the voice generator
                 asyncio.run(generate_audio(page_text, voice_id))
-                # Display the audio player on the screen
                 st.audio("output.mp3", format="audio/mp3")
                 
     st.divider()
     
-    # Display page counter
     st.write(f"**Page {current_idx + 1} of {len(st.session_state.pdf_pages)}**")
     
     # --- NAVIGATION BUTTONS ---
