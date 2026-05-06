@@ -43,6 +43,7 @@ def fix_pdf_encoding(text):
         "’": "Ṛ",
         "™": "Ṣ",
         "–": "Ṇ",
+        "Œ": "i",
         "K’™–A": "KṚṢṆA",
         "K‚‰†a": "Kṛṣṇa",
         "Rƒja": "Rāja",
@@ -50,12 +51,21 @@ def fix_pdf_encoding(text):
         "Ha‡ha": "Haṭha",
         "Kriyƒ": "Kriyā",
         "Rƒma": "Rāma",
+        "s.tra": "sutra",
+        "Satsvar.pa": "Satsvaroopa",
+        "Rājas.ya": "Rājasūya",
+        "pa7u": "paśu",
+        "Ð": "-",
+        "Śa...kara": "Śaṅkara",
         
         # NEW: BBT Krsna Book Specific Fixes
         "": "0", "": "1", "": "2", "": "3", "": "4", 
         "": "5", "": "6", "": "7", "": "8", "": "9",
         "“": "Ā",
         "œ": "Ī",
+        "Œ": "ī",
+        ",,": "ṁ",
+        "^": "ḍ",
         "": "Ś", 
         "Ã": "-", 
         "Krsna": "Krishna"
@@ -90,6 +100,7 @@ def apply_pronunciation_rules(text):
         "ṣ": "sh",
         "ṃ": "m",
         "ḥ": "h",
+        "ṁ": "m",
         "kṛṣṇa": "krishna",
         "caitanya": "chaitanya",
         "dr": "doctor"
