@@ -57,6 +57,7 @@ def fix_pdf_encoding(text):
         "pa7u": "paśu",
         "Ð": "-",
         "Śa...kara": "Śaṅkara",
+        "
         
         # NEW: BBT Krsna Book Specific Fixes
         "": "0", "": "1", "": "2", "": "3", "": "4", 
@@ -65,7 +66,7 @@ def fix_pdf_encoding(text):
         "œ": "Ī",
         "Œ": "ī",
         ",,": "ṁ",
-        "^": "ḍ",
+        "ˆ": "ḍ",
         "": "Ś", 
         "Ã": "-", 
         "Krsna": "Krishna"
