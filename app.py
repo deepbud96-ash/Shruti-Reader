@@ -3,7 +3,7 @@ import fitz  # PyMuPDF
 import edge_tts
 import asyncio
 import os
-import re  # WE ADDED THIS: The Regex engine to magically find complex word patterns!
+import re
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -38,8 +38,6 @@ def fix_pdf_encoding(text):
 
 # --- SANSKRIT PRONUNCIATION DICTIONARY ---
 def apply_pronunciation_rules(text):
-    # 1. Fix standalone "ca" to "cha" BEFORE other rules.
-    # The \b means "word boundary", so it strictly targets the standalone word "ca".
     text = re.sub(r'\bca\b', 'cha', text)
     text = re.sub(r'\bCa\b', 'Cha', text)
 
@@ -68,11 +66,7 @@ def apply_pronunciation_rules(text):
         text = text.replace(key, value)
         text = text.replace(key.upper(), value.capitalize())
         
-    # 2. Fix the "Schwa Deletion" (Indian AI dropping the final 'a')
-    # This specifically looks for words ending in a single 'a' and stretches it to 'aa'.
-    # Example: karma -> karmaa, Arjuna -> Arjunaa. It naturally ignores the word "a".
     text = re.sub(r'\b([A-Za-z]*[^aA\W])a\b', r'\1aa', text)
-
     return text
 
 # --- AUDIO GENERATION ENGINE ---
@@ -81,11 +75,16 @@ async def generate_audio(text, voice="en-IN-NeerjaNeural", rate="+0%"):
     communicate = edge_tts.Communicate(processed_text, voice, rate=rate)
     await communicate.save("output.mp3")
 
-# --- SESSION STATE (MEMORY) ---
+# --- SESSION STATE & SMART URL MEMORY ---
 if "pdf_pages" not in st.session_state:
     st.session_state.pdf_pages = []
+
 if "current_page" not in st.session_state:
-    st.session_state.current_page = 0
+    # Check if the web address has a saved page number in it!
+    if "page" in st.query_params:
+        st.session_state.current_page = int(st.query_params["page"])
+    else:
+        st.session_state.current_page = 0
 
 # --- MAIN UI ---
 st.title("Shruti Reader")
@@ -116,7 +115,11 @@ if uploaded_file is not None:
                     extracted_pages.append("[No text found on this page. It might be an image or scan.]")
             
             st.session_state.pdf_pages = extracted_pages
-            st.session_state.current_page = 0
+            
+            # Safety check: if the book is smaller than the saved page, start over
+            if st.session_state.current_page >= total_pages:
+                st.session_state.current_page = 0
+                
             st.success(f"Successfully extracted and decrypted {total_pages} pages!")
 
 # --- DOCUMENT READER & AUDIO PLAYER ---
@@ -188,11 +191,15 @@ if st.session_state.pdf_pages:
         if st.button("Previous Page"):
             if current_idx > 0:
                 st.session_state.current_page -= 1
+                # Update the URL automatically!
+                st.query_params["page"] = str(st.session_state.current_page)
                 st.rerun()
     with col2:
         if st.button("Next Page"):
             if current_idx < len(st.session_state.pdf_pages) - 1:
                 st.session_state.current_page += 1
+                # Update the URL automatically!
+                st.query_params["page"] = str(st.session_state.current_page)
                 st.rerun()
 
     # --- TEXT DISPLAY ---
