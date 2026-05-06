@@ -43,7 +43,7 @@ def fix_pdf_encoding(text):
         "’": "Ṛ",
         "™": "Ṣ",
         "–": "Ṇ",
-        "Œ": "i",
+        "Œ": "ī",  # Fixed duplicate key issue!
         "K’™–A": "KṚṢṆA",
         "K‚‰†a": "Kṛṣṇa",
         "Rƒja": "Rāja",
@@ -58,12 +58,11 @@ def fix_pdf_encoding(text):
         "Ð": "-",
         "Śa...kara": "Śaṅkara",
         
-        # NEW: BBT Krsna Book Specific Fixes
+        # BBT Krsna Book Specific Fixes
         "": "0", "": "1", "": "2", "": "3", "": "4", 
         "": "5", "": "6", "": "7", "": "8", "": "9",
         "“": "Ā",
         "œ": "Ī",
-        "Œ": "ī",
         ",,": "ṁ",
         "ˆ": "ḍ",
         "^": "ḍ",
@@ -84,6 +83,7 @@ def apply_pronunciation_rules(text):
     text = re.sub(r'\bhare\b', 'harray', text, flags=re.IGNORECASE)
 
     rules = {
+        "mām": "mahm", # Fixes the "Ma'am" English AI bug!
         "jñānā": "gnaanaa",
         "jñāna": "gnaana",
         "haṭha": "hatha",
