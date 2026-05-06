@@ -10,7 +10,36 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- PDF FONT DECRYPTOR (Fixes old Balaram/Sca Fonts) ---
+# This translates the "hacked" European letters from the original PDF 
+# back into true, modern Sanskrit Unicode so it displays beautifully on your screen.
+def fix_pdf_encoding(text):
+    font_fixes = {
+        "ä": "ā", "Ä": "Ā",
+        "é": "ī", "É": "Ī",
+        "ü": "ū", "Ü": "Ū",
+        "å": "ṛ", "Å": "Ṛ",
+        "ñ": "ṣ", "Ñ": "Ṣ",
+        "ë": "ṇ", "Ë": "Ṇ",
+        "ö": "ṭ", "Ö": "Ṭ",
+        "ò": "ḍ", "Ò": "Ḍ",
+        "ç": "ś", "Ç": "Ś",
+        "ì": "ṅ", "Ì": "Ṅ",
+        "ï": "ñ", "Ï": "Ñ",
+        "à": "ṁ", "À": "Ṁ",
+        "ù": "ḥ", "Ù": "Ḥ",
+        # Adding your specific catches just to be 100% safe
+        "Kåñëa": "Kṛṣṇa",
+        "Rädhäräëé": "Rādhārāṇī",
+        "Çréla": "Śrīla",
+        "Prabhupäda": "Prabhupāda"
+    }
+    for old_char, new_char in font_fixes.items():
+        text = text.replace(old_char, new_char)
+    return text
+
 # --- SANSKRIT PRONUNCIATION DICTIONARY ---
+# This looks for the *fixed* Unicode characters and tells the AI how to say them out loud.
 def apply_pronunciation_rules(text):
     rules = {
         "ā": "aa",
@@ -28,7 +57,8 @@ def apply_pronunciation_rules(text):
         "ṣ": "sh",
         "ṃ": "m",
         "ḥ": "h",
-        "krṣṇa": "krishna",
+        "Kṛṣṇa": "Krishna",
+        "kṛṣṇa": "krishna",
         "Caitanya": "Chaitanya",
         "Dr": "Doctor"
     }
@@ -61,7 +91,7 @@ uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
 if uploaded_file is not None:
     if st.button("Process Book"):
-        with st.spinner("Extracting text with high-fidelity engine..."):
+        with st.spinner("Extracting and decrypting ancient fonts..."):
             pdf_bytes = uploaded_file.read()
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
             total_pages = len(doc)
@@ -69,16 +99,18 @@ if uploaded_file is not None:
             extracted_pages = []
             for page_num in range(total_pages):
                 page = doc.load_page(page_num)
-                text = page.get_text()
+                # Extract the text, then instantly run it through our Decryptor!
+                raw_text = page.get_text()
+                fixed_text = fix_pdf_encoding(raw_text)
                 
-                if text.strip():
-                    extracted_pages.append(text)
+                if fixed_text.strip():
+                    extracted_pages.append(fixed_text)
                 else:
                     extracted_pages.append("[No text found on this page. It might be an image or scan.]")
             
             st.session_state.pdf_pages = extracted_pages
             st.session_state.current_page = 0
-            st.success(f"Successfully extracted {total_pages} pages!")
+            st.success(f"Successfully extracted and decrypted {total_pages} pages!")
 
 # --- DOCUMENT READER & AUDIO PLAYER ---
 if st.session_state.pdf_pages:
@@ -94,7 +126,6 @@ if st.session_state.pdf_pages:
     col_voice, col_speed, col_play = st.columns([3, 3, 4])
     
     with col_voice:
-        # Massive list covering all major English accents around the world!
         voice_choice = st.selectbox("Select Voice:", [
             "en-IN-NeerjaNeural (Female, India)", 
             "en-IN-PrabhatNeural (Male, India)",
