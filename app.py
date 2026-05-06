@@ -1,6 +1,8 @@
 import streamlit as st
 import PyPDF2
-import io
+import edge_tts
+import asyncio
+import os
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -8,9 +10,46 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- SANSKRIT PRONUNCIATION DICTIONARY ---
+# This looks for special characters and replaces them with English phonetics before the AI reads it.
+def apply_pronunciation_rules(text):
+    rules = {
+        "ā": "aa",
+        "ī": "ee",
+        "ū": "oo",
+        "ṛ": "ri",
+        "ṝ": "ree",
+        "ḷ": "lri",
+        "ṅ": "ng",
+        "ñ": "ny",
+        "ṭ": "t",
+        "ḍ": "d",
+        "ṇ": "n",
+        "ś": "sh",
+        "ṣ": "sh",
+        "ṃ": "m",
+        "ḥ": "h",
+        "krṣṇa": "krishna",
+        "Caitanya": "Chaitanya"
+        "Dr": "Doctor"     
+    }
+    for key, value in rules.items():
+        # Replace lowercase
+        text = text.replace(key, value)
+        # Replace uppercase
+        text = text.replace(key.upper(), value.capitalize())
+    return text
+
+# --- AUDIO GENERATION ENGINE ---
+# This runs the free edge-tts engine and saves the audio file
+async def generate_audio(text, voice="en-IN-NeerjaNeural"):
+    processed_text = apply_pronunciation_rules(text)
+    # Create the audio generator
+    communicate = edge_tts.Communicate(processed_text, voice)
+    # Save it to a temporary file
+    await communicate.save("output.mp3")
+
 # --- SESSION STATE (MEMORY) ---
-# Streamlit refreshes the script every time you click a button.
-# "Session State" is our way of forcing it to remember our book and current page!
 if "pdf_pages" not in st.session_state:
     st.session_state.pdf_pages = []
 if "current_page" not in st.session_state:
@@ -24,58 +63,76 @@ st.divider()
 
 # --- DOCUMENT UPLOADER ---
 st.subheader("1. Document Upload")
-# This creates a drag-and-drop file uploader that only accepts PDFs
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
 if uploaded_file is not None:
-    # A button to confirm we want to process the file
     if st.button("Process Book"):
         with st.spinner("Extracting text... This might take a moment for large books."):
-            # 1. Open the PDF file
             pdf_reader = PyPDF2.PdfReader(uploaded_file)
             total_pages = len(pdf_reader.pages)
             
-            # 2. Extract text page by page
             extracted_pages = []
             for page_num in range(total_pages):
                 page = pdf_reader.pages[page_num]
                 text = page.extract_text()
                 
-                # Check if the page actually has text (to filter out pure image scans)
                 if text:
                     extracted_pages.append(text)
                 else:
                     extracted_pages.append("[No text found on this page. It might be an image or scan.]")
             
-            # 3. Save the extracted text to our memory
             st.session_state.pdf_pages = extracted_pages
             st.session_state.current_page = 0
-            
-            # Show a success message!
             st.success(f"Successfully extracted {total_pages} pages!")
 
-# --- DOCUMENT READER ---
-# Only show the reader if we have pages saved in our memory
+# --- DOCUMENT READER & AUDIO PLAYER ---
 if st.session_state.pdf_pages:
     st.divider()
     st.subheader("2. Reader")
     
-    # Get the current page number
     current_idx = st.session_state.current_page
+    page_text = st.session_state.pdf_pages[current_idx]
+    
+    # --- AUDIO CONTROLS ---
+    st.write("**Audio Settings**")
+    col_voice, col_play, col_empty = st.columns([2, 2, 6])
+    
+    with col_voice:
+        # A dropdown to select voice accents and genders
+        voice_choice = st.selectbox("Select Voice:", [
+            "en-IN-NeerjaNeural (Female, India)", 
+            "en-IN-PrabhatNeural (Male, India)", 
+            "en-US-AriaNeural (Female, US)", 
+            "en-US-GuyNeural (Male, US)",
+            "en-GB-SoniaNeural (Female, UK)",
+            "en-GB-RyanNeural (Male, UK)"
+        ])
+        # We only need the ID part (e.g., "en-IN-NeerjaNeural") for the code
+        voice_id = voice_choice.split(" ")[0]
+
+    with col_play:
+        # Add some space to align the button with the dropdown
+        st.write("") 
+        st.write("")
+        if st.button("Play Current Page"):
+            with st.spinner("Generating natural speech..."):
+                # Run the voice generator
+                asyncio.run(generate_audio(page_text, voice_id))
+                # Display the audio player on the screen
+                st.audio("output.mp3", format="audio/mp3")
+                
+    st.divider()
     
     # Display page counter
     st.write(f"**Page {current_idx + 1} of {len(st.session_state.pdf_pages)}**")
     
     # --- NAVIGATION BUTTONS ---
-    # We create three columns so our buttons sit neatly side-by-side
     col1, col2, col3 = st.columns([1, 1, 8])
-    
     with col1:
         if st.button("Previous Page"):
             if current_idx > 0:
                 st.session_state.current_page -= 1
-                st.rerun() # Force the page to refresh immediately
-                
+                st.rerun()
     with col2:
         if st.button("Next Page"):
             if current_idx < len(st.session_state.pdf_pages) - 1:
@@ -83,5 +140,4 @@ if st.session_state.pdf_pages:
                 st.rerun()
 
     # --- TEXT DISPLAY ---
-    # st.markdown displays the text naturally and supports native browser zooming
-    st.markdown(st.session_state.pdf_pages[current_idx])
+    st.markdown(page_text)
