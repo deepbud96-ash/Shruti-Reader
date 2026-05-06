@@ -30,8 +30,8 @@ def apply_pronunciation_rules(text):
         "ṃ": "m",
         "ḥ": "h",
         "krṣṇa": "krishna",
-        "Caitanya": "Chaitanya"
-        "Dr": "Doctor"     
+        "Caitanya": "Chaitanya",
+        "Dr": "Doctor"
     }
     for key, value in rules.items():
         # Replace lowercase
