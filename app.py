@@ -3,6 +3,7 @@ import fitz  # PyMuPDF
 import edge_tts
 import asyncio
 import os
+import re  # WE ADDED THIS: The Regex engine to magically find complex word patterns!
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -10,9 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF FONT DECRYPTOR (Fixes old Balaram/Sca Fonts) ---
-# This translates the "hacked" European letters from the original PDF 
-# back into true, modern Sanskrit Unicode so it displays beautifully on your screen.
+# --- PDF FONT DECRYPTOR ---
 def fix_pdf_encoding(text):
     font_fixes = {
         "ä": "ā", "Ä": "Ā",
@@ -28,7 +27,6 @@ def fix_pdf_encoding(text):
         "ï": "ñ", "Ï": "Ñ",
         "à": "ṁ", "À": "Ṁ",
         "ù": "ḥ", "Ù": "Ḥ",
-        # Adding your specific catches just to be 100% safe
         "Kåñëa": "Kṛṣṇa",
         "Rädhäräëé": "Rādhārāṇī",
         "Çréla": "Śrīla",
@@ -39,8 +37,12 @@ def fix_pdf_encoding(text):
     return text
 
 # --- SANSKRIT PRONUNCIATION DICTIONARY ---
-# This looks for the *fixed* Unicode characters and tells the AI how to say them out loud.
 def apply_pronunciation_rules(text):
+    # 1. Fix standalone "ca" to "cha" BEFORE other rules.
+    # The \b means "word boundary", so it strictly targets the standalone word "ca".
+    text = re.sub(r'\bca\b', 'cha', text)
+    text = re.sub(r'\bCa\b', 'Cha', text)
+
     rules = {
         "ā": "aa",
         "ī": "ee",
@@ -65,6 +67,12 @@ def apply_pronunciation_rules(text):
     for key, value in rules.items():
         text = text.replace(key, value)
         text = text.replace(key.upper(), value.capitalize())
+        
+    # 2. Fix the "Schwa Deletion" (Indian AI dropping the final 'a')
+    # This specifically looks for words ending in a single 'a' and stretches it to 'aa'.
+    # Example: karma -> karmaa, Arjuna -> Arjunaa. It naturally ignores the word "a".
+    text = re.sub(r'\b([A-Za-z]*[^aA\W])a\b', r'\1aa', text)
+
     return text
 
 # --- AUDIO GENERATION ENGINE ---
@@ -99,7 +107,6 @@ if uploaded_file is not None:
             extracted_pages = []
             for page_num in range(total_pages):
                 page = doc.load_page(page_num)
-                # Extract the text, then instantly run it through our Decryptor!
                 raw_text = page.get_text()
                 fixed_text = fix_pdf_encoding(raw_text)
                 
