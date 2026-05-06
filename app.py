@@ -67,8 +67,10 @@ def fix_pdf_encoding(text):
         "Œ": "ī",
         ",,": "ṁ",
         "ˆ": "ḍ",
+        "^": "ḍ",
         "": "Ś", 
-        "Ã": "-", 
+        "Ã": "-",
+        "Gau^ade3a": "Gauḍadeśa",
         "Krsna": "Krishna"
     }
     
