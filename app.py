@@ -33,7 +33,7 @@ def fix_pdf_encoding(text):
         "Çréla": "Śrīla",
         "Prabhupäda": "Prabhupāda",
         
-        # NEW: Sanskrit-Times / Tamal Font Fixes
+        # Sanskrit-Times / Tamal Font Fixes
         "ƒ": "ā",
         "Š": "ñ",
         "‡": "ṭ",
@@ -49,25 +49,28 @@ def fix_pdf_encoding(text):
         "JŠƒna": "Jñānā",
         "Ha‡ha": "Haṭha",
         "Kriyƒ": "Kriyā",
-        "Rƒma": "Rāma"
+        "Rƒma": "Rāma",
+        
+        # NEW: BBT Krsna Book Specific Fixes
+        "": "0", "": "1", "": "2", "": "3", "": "4", 
+        "": "5", "": "6", "": "7", "": "8", "": "9",
+        "“": "Ā",
+        "œ": "Ī",
+        "": "Ś", 
+        "Ã": "-", 
+        "Krsna": "Krishna"
     }
     
-    # Run the decryption replacement
     for old_char, new_char in font_fixes.items():
         text = text.replace(old_char, new_char)
     return text
 
 # --- SANSKRIT PRONUNCIATION DICTIONARY ---
 def apply_pronunciation_rules(text):
-    # 1. Fix standalone "ca" to "cha"
     text = re.sub(r'\bca\b', 'cha', text)
     text = re.sub(r'\bCa\b', 'Cha', text)
-    
-    # 2. Fix the pronunciation of "Hare" so it reads as "Ha-ray" instead of "Hair"
-    # re.IGNORECASE makes sure it catches Hare, hare, and HARE.
     text = re.sub(r'\bhare\b', 'harray', text, flags=re.IGNORECASE)
 
-    # 3. Core Dictionary (We use lowercase here, the loop below handles the capitalization!)
     rules = {
         "jñānā": "gnaanaa",
         "jñāna": "gnaana",
@@ -92,15 +95,12 @@ def apply_pronunciation_rules(text):
         "dr": "doctor"
     }
     
-    # Smart Loop: Replaces lowercase, Title Case, and UPPERCASE automatically
     for key, value in rules.items():
         text = text.replace(key, value)
         text = text.replace(key.capitalize(), value.capitalize())
         text = text.replace(key.upper(), value.upper())
         
-    # 4. Fix the "Schwa Deletion" (stretching final 'a' to 'aa' so Indian AI doesn't drop it)
     text = re.sub(r'\b([A-Za-z]*[^aA\W])a\b', r'\1aa', text)
-    
     return text
 
 # --- AUDIO GENERATION ENGINE ---
