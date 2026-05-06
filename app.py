@@ -1,5 +1,5 @@
 import streamlit as st
-import fitz  # This is the PyMuPDF library
+import fitz  # PyMuPDF
 import edge_tts
 import asyncio
 import os
@@ -38,9 +38,9 @@ def apply_pronunciation_rules(text):
     return text
 
 # --- AUDIO GENERATION ENGINE ---
-async def generate_audio(text, voice="en-IN-NeerjaNeural"):
+async def generate_audio(text, voice="en-IN-NeerjaNeural", rate="+0%"):
     processed_text = apply_pronunciation_rules(text)
-    communicate = edge_tts.Communicate(processed_text, voice)
+    communicate = edge_tts.Communicate(processed_text, voice, rate=rate)
     await communicate.save("output.mp3")
 
 # --- SESSION STATE (MEMORY) ---
@@ -62,14 +62,10 @@ uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 if uploaded_file is not None:
     if st.button("Process Book"):
         with st.spinner("Extracting text with high-fidelity engine..."):
-            # 1. Read the file into memory
             pdf_bytes = uploaded_file.read()
-            
-            # 2. Open it with our new PyMuPDF engine
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
             total_pages = len(doc)
             
-            # 3. Extract text
             extracted_pages = []
             for page_num in range(total_pages):
                 page = doc.load_page(page_num)
@@ -94,25 +90,54 @@ if st.session_state.pdf_pages:
     
     # --- AUDIO CONTROLS ---
     st.write("**Audio Settings**")
-    col_voice, col_play, col_empty = st.columns([2, 2, 6])
+    
+    col_voice, col_speed, col_play = st.columns([3, 3, 4])
     
     with col_voice:
+        # Massive list covering all major English accents around the world!
         voice_choice = st.selectbox("Select Voice:", [
             "en-IN-NeerjaNeural (Female, India)", 
-            "en-IN-PrabhatNeural (Male, India)", 
+            "en-IN-PrabhatNeural (Male, India)",
             "en-US-AriaNeural (Female, US)", 
             "en-US-GuyNeural (Male, US)",
+            "en-US-ChristopherNeural (Male, US)",
+            "en-US-EricNeural (Male, US)",
+            "en-US-MichelleNeural (Female, US)",
+            "en-US-RogerNeural (Male, US)",
             "en-GB-SoniaNeural (Female, UK)",
-            "en-GB-RyanNeural (Male, UK)"
+            "en-GB-RyanNeural (Male, UK)",
+            "en-GB-LibbyNeural (Female, UK)",
+            "en-GB-MaisieNeural (Female, UK)",
+            "en-GB-ThomasNeural (Male, UK)",
+            "en-AU-NatashaNeural (Female, Australia)",
+            "en-AU-WilliamNeural (Male, Australia)",
+            "en-CA-ClaraNeural (Female, Canada)",
+            "en-CA-LiamNeural (Male, Canada)",
+            "en-IE-ConnorNeural (Male, Ireland)",
+            "en-IE-EmilyNeural (Female, Ireland)",
+            "en-NZ-MitchellNeural (Male, New Zealand)",
+            "en-NZ-MollyNeural (Female, New Zealand)",
+            "en-ZA-LukeNeural (Male, South Africa)",
+            "en-ZA-LeahNeural (Female, South Africa)",
+            "en-NG-AbeoNeural (Male, Nigeria)",
+            "en-NG-EzinneNeural (Female, Nigeria)",
+            "en-PH-JamesNeural (Male, Philippines)",
+            "en-PH-RosaNeural (Female, Philippines)",
+            "en-SG-LunaNeural (Female, Singapore)",
+            "en-SG-WayneNeural (Male, Singapore)"
         ])
         voice_id = voice_choice.split(" ")[0]
+
+    with col_speed:
+        speed_val = st.slider("Reading Speed:", min_value=-50, max_value=50, value=0, step=5, format="%d%%")
+        speed_str = f"+{speed_val}%" if speed_val >= 0 else f"{speed_val}%"
 
     with col_play:
         st.write("") 
         st.write("")
         if st.button("Play Current Page"):
             with st.spinner("Generating natural speech..."):
-                asyncio.run(generate_audio(page_text, voice_id))
+                asyncio.run(generate_audio(page_text, voice_id, speed_str))
                 st.audio("output.mp3", format="audio/mp3")
                 
     st.divider()
