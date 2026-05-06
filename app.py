@@ -14,6 +14,7 @@ st.set_page_config(
 # --- PDF FONT DECRYPTOR ---
 def fix_pdf_encoding(text):
     font_fixes = {
+        # Original Balaram Font Fixes
         "ä": "ā", "Ä": "Ā",
         "é": "ī", "É": "Ī",
         "ü": "ū", "Ü": "Ū",
@@ -30,18 +31,47 @@ def fix_pdf_encoding(text):
         "Kåñëa": "Kṛṣṇa",
         "Rädhäräëé": "Rādhārāṇī",
         "Çréla": "Śrīla",
-        "Prabhupäda": "Prabhupāda"
+        "Prabhupäda": "Prabhupāda",
+        
+        # NEW: Sanskrit-Times / Tamal Font Fixes
+        "ƒ": "ā",
+        "Š": "ñ",
+        "‡": "ṭ",
+        "‚": "ṛ",
+        "‰": "ṣ",
+        "†": "ṇ",
+        "’": "Ṛ",
+        "™": "Ṣ",
+        "–": "Ṇ",
+        "K’™–A": "KṚṢṆA",
+        "K‚‰†a": "Kṛṣṇa",
+        "Rƒja": "Rāja",
+        "JŠƒna": "Jñānā",
+        "Ha‡ha": "Haṭha",
+        "Kriyƒ": "Kriyā",
+        "Rƒma": "Rāma"
     }
+    
+    # Run the decryption replacement
     for old_char, new_char in font_fixes.items():
         text = text.replace(old_char, new_char)
     return text
 
 # --- SANSKRIT PRONUNCIATION DICTIONARY ---
 def apply_pronunciation_rules(text):
+    # 1. Fix standalone "ca" to "cha"
     text = re.sub(r'\bca\b', 'cha', text)
     text = re.sub(r'\bCa\b', 'Cha', text)
+    
+    # 2. Fix the pronunciation of "Hare" so it reads as "Ha-ray" instead of "Hair"
+    # re.IGNORECASE makes sure it catches Hare, hare, and HARE.
+    text = re.sub(r'\bhare\b', 'harray', text, flags=re.IGNORECASE)
 
+    # 3. Core Dictionary (We use lowercase here, the loop below handles the capitalization!)
     rules = {
+        "jñānā": "gnaanaa",
+        "jñāna": "gnaana",
+        "haṭha": "hatha",
         "ā": "aa",
         "ī": "ee",
         "ū": "oo",
@@ -57,16 +87,20 @@ def apply_pronunciation_rules(text):
         "ṣ": "sh",
         "ṃ": "m",
         "ḥ": "h",
-        "Kṛṣṇa": "Krishna",
         "kṛṣṇa": "krishna",
-        "Caitanya": "Chaitanya",
-        "Dr": "Doctor"
+        "caitanya": "chaitanya",
+        "dr": "doctor"
     }
+    
+    # Smart Loop: Replaces lowercase, Title Case, and UPPERCASE automatically
     for key, value in rules.items():
         text = text.replace(key, value)
-        text = text.replace(key.upper(), value.capitalize())
+        text = text.replace(key.capitalize(), value.capitalize())
+        text = text.replace(key.upper(), value.upper())
         
+    # 4. Fix the "Schwa Deletion" (stretching final 'a' to 'aa' so Indian AI doesn't drop it)
     text = re.sub(r'\b([A-Za-z]*[^aA\W])a\b', r'\1aa', text)
+    
     return text
 
 # --- AUDIO GENERATION ENGINE ---
@@ -80,7 +114,6 @@ if "pdf_pages" not in st.session_state:
     st.session_state.pdf_pages = []
 
 if "current_page" not in st.session_state:
-    # Check if the web address has a saved page number in it!
     if "page" in st.query_params:
         st.session_state.current_page = int(st.query_params["page"])
     else:
@@ -98,7 +131,7 @@ uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
 if uploaded_file is not None:
     if st.button("Process Book"):
-        with st.spinner("Extracting and decrypting ancient fonts..."):
+        with st.spinner("Extracting and decrypting multi-font ancient texts..."):
             pdf_bytes = uploaded_file.read()
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
             total_pages = len(doc)
@@ -116,7 +149,6 @@ if uploaded_file is not None:
             
             st.session_state.pdf_pages = extracted_pages
             
-            # Safety check: if the book is smaller than the saved page, start over
             if st.session_state.current_page >= total_pages:
                 st.session_state.current_page = 0
                 
@@ -191,14 +223,12 @@ if st.session_state.pdf_pages:
         if st.button("Previous Page"):
             if current_idx > 0:
                 st.session_state.current_page -= 1
-                # Update the URL automatically!
                 st.query_params["page"] = str(st.session_state.current_page)
                 st.rerun()
     with col2:
         if st.button("Next Page"):
             if current_idx < len(st.session_state.pdf_pages) - 1:
                 st.session_state.current_page += 1
-                # Update the URL automatically!
                 st.query_params["page"] = str(st.session_state.current_page)
                 st.rerun()
 
